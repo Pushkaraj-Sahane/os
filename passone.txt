@@ -1,0 +1,101 @@
+package assembler;
+
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.*;
+
+public class passone {
+	static LinkedHashMap<String, TableRow> SYMTAB; 
+	static int symIndex = 0;
+	
+	public static void main(String args[]) throws IOException {
+		INSTable lookup = new INSTable();
+		SYMTAB = new LinkedHashMap<>();
+		int lc = 0;
+		String line, code;
+		BufferedReader br = new BufferedReader(new FileReader("C:/Users/91848/Downloads/input.txt"));
+		BufferedWriter bw = new BufferedWriter(new FileWriter("C:/Users/91848/OneDrive/Desktop/myjava/intermediate"));
+		while((line = br.readLine()) != null) {
+			String parts[] = line.split("\\s+");
+			if(parts[1].equals("START")) {
+				lc = Integer.parseInt(parts[2]);
+				code = "(AD,01) (C,"+lc+")";
+				bw.write(code + "\n");
+			}
+			if(parts[1].equals("END")) {
+				code = "(AD,02)";
+				bw.write(code + "\n");
+			}
+			if(!(parts[0].isEmpty())) {
+				if(SYMTAB.containsKey(parts[0])) {
+					SYMTAB.put(parts[0], new TableRow(parts[0], lc, SYMTAB.get(parts[0]).getIndex()));		
+				}
+				else {
+					SYMTAB.put(parts[0], new TableRow(parts[0], -1, ++symIndex));
+				}
+			}
+			if(parts[1].equals("DC")) {
+				parts[2] = parts[2].replace("'", "");
+				int constant = Integer.parseInt(parts[2]);
+				code = "(DL,01) (C,"+constant+")";
+				lc++;
+				bw.write(code + "\n");
+			}
+			if(parts[1].equals("DS")) {
+				int size = Integer.parseInt(parts[2]);
+				code = "(DL,02) (C,"+size+")";
+				lc = lc + size;
+				bw.write(code + "\n");
+			}
+			if(lookup.gettype(parts[1]).equals("IS")) {
+				int j = 2;
+				code = "(IS,0"+lookup.getcode(parts[1])+") ";			
+				String acode = "";
+				while(j < parts.length) {
+					parts[j] = parts[j].replace(",", "");
+					if(lookup.gettype(parts[j]).equals("RG")) {
+						acode = acode + "(RG,0" + lookup.getcode(parts[j])+ ") ";	
+					}
+					else {
+						if(SYMTAB.containsKey(parts[j])) {
+							int ind = SYMTAB.get(parts[j]).getIndex();
+							acode = acode + "(S,0"+ ind + ")\t";
+						}
+						else {
+							SYMTAB.put(parts[j], new TableRow(parts[j], -1, ++symIndex));
+							int ind = SYMTAB.get(parts[j]).getIndex();
+							acode = acode + "(S,0" + ind + ")";
+						}
+					}
+					j++;
+				}
+				code = code + acode;
+				lc++;
+				bw.write(code + "\n");
+			}
+		}
+		br.close();
+		bw.close();
+		
+		printSYMTAB();
+	}
+	
+	static void printSYMTAB() throws IOException {
+		BufferedWriter bw = new BufferedWriter(new FileWriter("C:/Users/91848/OneDrive/Desktop/myjava/symtab"));
+		Set<String> allKeys = SYMTAB.keySet();
+		Iterator<String> itr = allKeys.iterator();
+		System.out.println("Symbol Table");
+		while(itr.hasNext()) {
+			String key = itr.next().toString();
+			TableRow val = SYMTAB.get(key);
+			String s = val.getIndex() + "\t   " + val.getsymbol()+ "\t\t" + val.getAddress() + "\n";
+			System.out.println(s);
+			bw.write(s);
+		}
+		bw.close();
+	}
+
+}
